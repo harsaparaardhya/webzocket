@@ -1,0 +1,16 @@
+{
+  "name": "webzocket",
+  "version": "0.0.1",
+  "description": "-",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/harsaparaardhya/webzocket.git"
+  },
+  "author": "Harsa Paraardhya",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/harsaparaardhya/webzocket/issues"
+  },
+  "homepage": "https://github.com/harsaparaardhya/webzocket#readme"
+}
