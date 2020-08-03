@@ -1,30 +1,3 @@
-class Message {
-  msg: string;
-  constructor(
-    public key: string,
-    public destination: string,
-    public value: any
-  ) {
-    const message = {
-      key: key,
-      destination: destination,
-      value: value,
-    };
-    this.msg = JSON.stringify(message);
-  }
-}
-
-class Receiver {
-  rcv: any;
-  constructor(public key: string, public callback: any) {
-    const receiver = {
-      key: key,
-      callback: callback,
-    };
-    this.rcv = receiver;
-  }
-}
-
 class WebZocket {
   socket: any = false;
   receivers: any[] = [];
@@ -56,14 +29,21 @@ class WebZocket {
   }
 
   trigger(key: string, destination: string, value: any) {
-    const message = new Message(key, destination, value);
+    const message = {
+      key: key,
+      destination: destination,
+      value: value,
+    };
 
-    if (this.socket) this.socket.send(message.msg);
+    if (this.socket) this.socket.send(JSON.stringify(message));
   }
 
   receiver(key: string, callback: any) {
-    const receiver = new Receiver(key, callback);
-    this.receivers.push(receiver.rcv);
+    const receiver = {
+      key: key,
+      callback: callback,
+    };
+    this.receivers.push(receiver);
   }
 }
 
