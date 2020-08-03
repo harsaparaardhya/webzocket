@@ -1,8 +1,12 @@
 {
   "name": "webzocket",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "-",
-  "main": "index.js",
+  "main": "lib/index.js",
+  "types": "lib",
+  "scripts": {
+    "build": "tsc -p ."
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/harsaparaardhya/webzocket.git"
@@ -12,5 +16,8 @@
   "bugs": {
     "url": "https://github.com/harsaparaardhya/webzocket/issues"
   },
-  "homepage": "https://github.com/harsaparaardhya/webzocket#readme"
+  "homepage": "https://github.com/harsaparaardhya/webzocket#readme",
+  "devDependencies": {
+    "typescript": "^3.9.7"
+  }
 }
