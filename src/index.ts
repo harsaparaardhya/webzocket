@@ -1,19 +1,21 @@
+const receivers: any[] = [];
+
 class WebZocket {
-  socket: any = false;
-  receivers: any[] = [];
+  private socket: any = false;
 
   constructor() {}
 
-  init(room: string) {
-    this.socket = new WebSocket("ws://localhost:8080/", room);
-
+  init(conf: string) {
+    const configs = window.atob(conf);
+    const config = configs.split("::");
+    this.socket = new WebSocket(config[0], config[1]);
     this.socket.onopen = (e: any) => {};
 
     this.socket.onmessage = (event: any) => {
       const data = JSON.parse(event.data);
 
-      for (let a = 0; a < this.receivers.length; a++) {
-        const receiver = this.receivers[a];
+      for (const a in receivers) {
+        const receiver = receivers[a];
         if (data.key == receiver.key) receiver.callback(data.value);
       }
     };
@@ -38,12 +40,12 @@ class WebZocket {
     if (this.socket) this.socket.send(JSON.stringify(message));
   }
 
-  receiver(key: string, callback: any) {
+  receiver(key: string, callback: (a: any) => void) {
     const receiver = {
       key: key,
-      callback: callback,
+      callback: callback
     };
-    this.receivers.push(receiver);
+    receivers.push(receiver);
   }
 }
 
