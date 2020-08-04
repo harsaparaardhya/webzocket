@@ -1,3 +1,12 @@
+interface WebZocketConfig {
+    url: string;
+    production: boolean;
+}
+
+let config: WebZocketConfig = {
+  url: "Ojo=",
+  production: false
+};
 let socket: any = false;
 const messages: any[] = [];
 const receivers: any[] = [];
@@ -20,29 +29,56 @@ const send = (destination: string, key: string, value: any) => {
   messages.push(message);
 }
 
+const cons = (type: string, message: any) => {
+  if (!config.production) {
+    switch (type) {
+      case "info":
+        console.info(message);
+        break;
+
+      case "warn":
+        console.warn(message);
+        break;
+
+      case "error":
+        console.error(message);
+        break;
+    }
+  }
+}
+
 const WebZocket = {
-  init: (conf: string) => {
-    const configs = window.atob(conf);
-    const config = configs.split("::");
-    socket = new WebSocket(config[0], config[1]);
-    socket.onopen = (e: any) => {};
+  init: (conf: WebZocketConfig) => {
+    config = {...config,...conf};
+
+    const url = window.atob(config.url).split("::");
+    socket = new WebSocket(url[0], url[1]);
+    socket.onopen = (e: any) => {
+      cons("info", "connected");
+    };
 
     socket.onmessage = (event: any) => {
       const data = JSON.parse(event.data);
 
-      for (const a in receivers) {
-        const receiver = receivers[a];
-        if (data.key == receiver.key) receiver.callback(data.value);
+      if (data.error) {
+        cons("error", data.error);
+      } else {
+        for (const a in receivers) {
+          const receiver = receivers[a];
+          if (data.key == receiver.key) receiver.callback(data.value);
+        }
       }
     };
 
     socket.onclose = () => {
       socket = null;
-      setTimeout(WebZocket.init, 5000);
+      setTimeout(() => {
+        WebZocket.init(config);
+      }, 5000);
     };
 
     socket.onerror = (error: any) => {
-      console.log(error);
+      cons("error", error);
     };
   },
   me: (key: string, value: any) => {
