@@ -9,7 +9,7 @@ const messages: message[] = [];
 const receivers: receiver[] = [];
 
 setInterval(() => {
-  if (messages.length > 0 && socket) {
+  if (messages.length > 0 && socket.bufferedAmount == 0) {
     const message = messages[0];
     socket.send(JSON.stringify(message));
 
@@ -23,7 +23,9 @@ const send = (destination: string, key: string, value: any) => {
     key: key,
     value: value
   };
-  messages.push(m);
+
+  if (socket)
+    messages.push(m);
 }
 
 const cons = (type: string, message: any) => {
@@ -49,7 +51,7 @@ const webzocket = {
     c = {...c,...conf};
 
     const roomId = window.atob(c.roomId).split("::");
-    if (roomId.length == 2) {
+    if (roomId.length == 2 && WebSocket) {
       socket = new WebSocket(roomId[0], roomId[1]);
       socket.onopen = (e: any) => {
         cons("info", "socket connected");
@@ -79,6 +81,8 @@ const webzocket = {
       socket.onerror = (error: any) => {
         cons("error", "socket error");
       };
+    } else if (!WebSocket) {
+      cons("warn", "socket not support");
     } else {
       cons("error", "socket invalid");
     }
