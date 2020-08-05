@@ -1,7 +1,7 @@
 import { config , message , receiver } from './interface';
 
 let c: config = {
-  url: "",
+  roomId: "",
   production: false
 };
 let socket: any = false;
@@ -18,12 +18,12 @@ setInterval(() => {
 } , 100);
 
 const send = (destination: string, key: string, value: any) => {
-  const message = {
+  const m: message = {
     destination: destination,
     key: key,
     value: value
   };
-  messages.push(message);
+  messages.push(m);
 }
 
 const cons = (type: string, message: any) => {
@@ -48,9 +48,9 @@ const webzocket = {
   init: (conf: config) => {
     c = {...c,...conf};
 
-    const url = window.atob(c.url).split("::");
-    if (url.length == 2) {
-      socket = new WebSocket(url[0], url[1]);
+    const roomId = window.atob(c.roomId).split("::");
+    if (roomId.length == 2) {
+      socket = new WebSocket(roomId[0], roomId[1]);
       socket.onopen = (e: any) => {
         cons("info", "socket connected");
       };
@@ -93,11 +93,11 @@ const webzocket = {
     send("other", key, value);
   },
   receiver: (key: string, callback: (a: any) => void) => {
-    const receiver = {
+    const r: receiver = {
       key: key,
       callback: callback
     };
-    receivers.push(receiver);
+    receivers.push(r);
   }
 };
 

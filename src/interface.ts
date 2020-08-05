@@ -1,5 +1,5 @@
 interface config {
-    url: string;
+    roomId: string;
     production: boolean;
 }
 
