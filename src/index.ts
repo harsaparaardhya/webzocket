@@ -1,15 +1,12 @@
-interface WebZocketConfig {
-    url: string;
-    production: boolean;
-}
+import { config , message , receiver } from './interface';
 
-let config: WebZocketConfig = {
-  url: "Ojo=",
+let c: config = {
+  url: "",
   production: false
 };
 let socket: any = false;
-const messages: any[] = [];
-const receivers: any[] = [];
+const messages: message[] = [];
+const receivers: receiver[] = [];
 
 setInterval(() => {
   if (messages.length > 0 && socket) {
@@ -30,7 +27,7 @@ const send = (destination: string, key: string, value: any) => {
 }
 
 const cons = (type: string, message: any) => {
-  if (!config.production) {
+  if (!c.production) {
     switch (type) {
       case "info":
         console.info(message);
@@ -47,39 +44,44 @@ const cons = (type: string, message: any) => {
   }
 }
 
-const WebZocket = {
-  init: (conf: WebZocketConfig) => {
-    config = {...config,...conf};
+const webzocket = {
+  init: (conf: config) => {
+    c = {...c,...conf};
 
-    const url = window.atob(config.url).split("::");
-    socket = new WebSocket(url[0], url[1]);
-    socket.onopen = (e: any) => {
-      cons("info", "connected");
-    };
+    const url = window.atob(c.url).split("::");
+    if (url.length == 2) {
+      socket = new WebSocket(url[0], url[1]);
+      socket.onopen = (e: any) => {
+        cons("info", "socket connected");
+      };
 
-    socket.onmessage = (event: any) => {
-      const data = JSON.parse(event.data);
+      socket.onmessage = (event: any) => {
+        const data = JSON.parse(event.data);
 
-      if (data.error) {
-        cons("error", data.error);
-      } else {
-        for (const a in receivers) {
-          const receiver = receivers[a];
-          if (data.key == receiver.key) receiver.callback(data.value);
+        if (data.error) {
+          const error = data.error;
+          cons(error.type, error.message);
+        } else {
+          for (const a in receivers) {
+            const receiver = receivers[a];
+            if (data.key == receiver.key) receiver.callback(data.value);
+          }
         }
-      }
-    };
+      };
 
-    socket.onclose = () => {
-      socket = null;
-      setTimeout(() => {
-        WebZocket.init(config);
-      }, 5000);
-    };
+      socket.onclose = () => {
+        socket = null;
+        setTimeout(() => {
+          webzocket.init(c);
+        }, 5000);
+      };
 
-    socket.onerror = (error: any) => {
-      cons("error", error);
-    };
+      socket.onerror = (error: any) => {
+        cons("error", "socket error");
+      };
+    } else {
+      cons("error", "socket invalid");
+    }
   },
   me: (key: string, value: any) => {
     send("me", key, value);
@@ -99,4 +101,4 @@ const WebZocket = {
   }
 };
 
-export { WebZocket };
+export { webzocket };
