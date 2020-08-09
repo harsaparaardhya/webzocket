@@ -1,17 +1,24 @@
-interface config {
+interface Config {
     roomId: string;
-    production: boolean;
+    timeout: number;
+    log: (log: Log) => void;
 }
 
-interface message {
+interface Message {
   destination: string;
   key: string;
   value: any;
 }
 
-interface receiver {
+interface Subscribe {
     key: string;
-    callback: (a: any) => void;
+    callback: (any: any) => void;
 }
 
-export { config , message , receiver };
+interface Log {
+  type: string,
+  code: string,
+  message: string
+}
+
+export { Config , Message , Subscribe , Log };

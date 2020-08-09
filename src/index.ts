@@ -1,108 +1,114 @@
-import { config , message , receiver } from './interface';
+import { Config , Message , Subscribe , Log } from './interface';
 
-let c: config = {
-  roomId: "",
-  production: false
-};
-let socket: any = false;
-const messages: message[] = [];
-const receivers: receiver[] = [];
-
-setInterval(() => {
-  if (messages.length > 0 && socket.bufferedAmount == 0) {
-    const message = messages[0];
-    socket.send(JSON.stringify(message));
-
-    messages.shift();
-  }
-} , 100);
-
-const send = (destination: string, key: string, value: any) => {
-  const m: message = {
-    destination: destination,
-    key: key,
-    value: value
+class WebZocket {
+  private config: Config = {
+    roomId: "",
+    timeout: 5000,
+    log: (log: Log) => {}
   };
+  private socket: any = false;
+  private messages: Message[] = [];
+  private subscribes: Subscribe[] = [];
 
-  if (socket)
-    messages.push(m);
-}
+  constructor(config: Config) {
+    this.init(config);
 
-const cons = (type: string, message: any) => {
-  if (!c.production) {
-    switch (type) {
-      case "info":
-        console.info(message);
-        break;
+    setInterval(() => {
+      if (this.socket) {
+        if (this.messages.length > 0 && this.socket.bufferedAmount == 0) {
+          const message = this.messages[0];
+          this.socket.send(JSON.stringify(message));
 
-      case "warn":
-        console.warn(message);
-        break;
-
-      case "error":
-        console.error(message);
-        break;
-    }
+          this.messages.shift();
+        }
+      }
+    } , 100);
   }
-}
 
-const webzocket = {
-  init: (conf: config) => {
-    c = {...c,...conf};
-
-    const roomId = window.atob(c.roomId).split("::");
+  private init(config: Config) {
+    this.config = {...this.config,...config};
+    const roomId = window.atob(this.config.roomId).split("::");
     if (roomId.length == 2 && WebSocket) {
-      socket = new WebSocket(roomId[0], roomId[1]);
-      socket.onopen = (e: any) => {
-        cons("info", "socket connected");
+      this.socket = new WebSocket(roomId[0], roomId[1]);
+      this.socket.onopen = (e: any) => {
+        this.cons("info", "socket_connected");
       };
 
-      socket.onmessage = (event: any) => {
+      this.socket.onmessage = (event: any) => {
         const data = JSON.parse(event.data);
 
         if (data.error) {
           const error = data.error;
-          cons(error.type, error.message);
+          this.cons(error.type, error.message);
         } else {
-          for (const a in receivers) {
-            const receiver = receivers[a];
-            if (data.key == receiver.key) receiver.callback(data.value);
+          for (const a in this.subscribes) {
+            const subscribe = this.subscribes[a];
+            if (data.key == subscribe.key) subscribe.callback(data.value);
           }
         }
       };
 
-      socket.onclose = () => {
-        socket = null;
+      this.socket.onclose = () => {
+        this.socket = null;
         setTimeout(() => {
-          webzocket.init(c);
-        }, 5000);
+          this.init(this.config);
+        }, this.config.timeout);
       };
 
-      socket.onerror = (error: any) => {
-        cons("error", "socket error");
+      this.socket.onerror = (error: any) => {
+        this.cons("error", "socket_error");
       };
     } else if (!WebSocket) {
-      cons("warn", "socket not support");
+      this.cons("warn", "socket_not_support");
     } else {
-      cons("error", "socket invalid");
+      this.cons("error", "socket_invalid");
     }
-  },
-  me: (key: string, value: any) => {
-    send("me", key, value);
-  },
-  we: (key: string, value: any) => {
-    send("we", key, value);
-  },
-  other: (key: string, value: any) => {
-    send("other", key, value);
-  },
-  receiver: (key: string, callback: (a: any) => void) => {
-    const r: receiver = {
+  }
+
+  public me(key: string, value: any) {
+    this.send("me", key, value);
+    return this;
+  }
+
+  public we(key: string, value: any) {
+    this.send("we", key, value);
+    return this;
+  }
+
+  public other(key: string, value: any) {
+    this.send("other", key, value);
+    return this;
+  }
+
+  public subscribe(key: string, callback: (any: any) => void) {
+    const subscribe: Subscribe = {
       key: key,
       callback: callback
     };
-    receivers.push(r);
-  }
-};
+    this.subscribes.push(subscribe);
 
-export { webzocket };
+    return this;
+  }
+
+  private send(destination: string, key: string, value: any) {
+    const m: Message = {
+      destination: destination,
+      key: key,
+      value: value
+    };
+
+    if (this.socket)
+      this.messages.push(m);
+  }
+
+  private cons(type: string, message: string) {
+    const log: Log = {
+      type: type,
+      code: message,
+      message: message
+    }
+    this.config.log(log);
+  }
+}
+
+export { WebZocket };
