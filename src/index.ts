@@ -7,62 +7,12 @@ class WebZocket {
     log: (log: Log) => {}
   };
   private socket: any = false;
+  private interval: any = false;
   private messages: Message[] = [];
   private subscribes: Subscribe[] = [];
 
   constructor(config: Config) {
     this.init(config);
-
-    setInterval(() => {
-      if (this.socket) {
-        if (this.messages.length > 0 && this.socket.bufferedAmount == 0) {
-          const message = this.messages[0];
-          this.socket.send(JSON.stringify(message));
-
-          this.messages.shift();
-        }
-      }
-    } , 100);
-  }
-
-  private init(config: Config) {
-    this.config = {...this.config,...config};
-    const roomId = window.atob(this.config.roomId).split("::");
-    if (roomId.length == 2 && WebSocket) {
-      this.socket = new WebSocket(roomId[0], roomId[1]);
-      this.socket.onopen = (e: any) => {
-        this.cons("info", "socket_connected");
-      };
-
-      this.socket.onmessage = (event: any) => {
-        const data = JSON.parse(event.data);
-
-        if (data.error) {
-          const error = data.error;
-          this.cons(error.type, error.message);
-        } else {
-          for (const a in this.subscribes) {
-            const subscribe = this.subscribes[a];
-            if (data.key == subscribe.key) subscribe.callback(data.value);
-          }
-        }
-      };
-
-      this.socket.onclose = () => {
-        this.socket = null;
-        setTimeout(() => {
-          this.init(this.config);
-        }, this.config.timeout);
-      };
-
-      this.socket.onerror = (error: any) => {
-        this.cons("error", "socket_error");
-      };
-    } else if (!WebSocket) {
-      this.cons("warn", "socket_not_support");
-    } else {
-      this.cons("error", "socket_invalid");
-    }
   }
 
   public me(key: string, value: any) {
@@ -90,6 +40,57 @@ class WebZocket {
     return this;
   }
 
+  private init(config: Config) {
+    this.config = {...this.config,...config};
+    const roomId = window.atob(this.config.roomId).split("::");
+    if (roomId.length == 2 && WebSocket) {
+      this.socket = new WebSocket(roomId[0], roomId[1]);
+      this.socket.onopen = (e: any) => {
+        this.interval = setInterval(() => {
+          if (this.messages.length > 0 && this.socket.bufferedAmount == 0) {
+            const message = this.messages[0];
+            this.socket.send(JSON.stringify(message));
+
+            this.messages.shift();
+          }
+        } , 100);
+      };
+
+      this.socket.onmessage = (event: any) => {
+        const data = JSON.parse(event.data);
+
+        if (data.error) {
+          const error = data.error;
+          this.cons(error.type, error.message);
+        } else {
+          for (const a in this.subscribes) {
+            const subscribe = this.subscribes[a];
+            if (data.key == subscribe.key) subscribe.callback(data.value);
+          }
+        }
+      };
+
+      this.socket.onclose = () => {
+        this.socket = false;
+
+        if (this.interval)
+          clearInterval(this.interval);
+
+        setTimeout(() => {
+          this.init(this.config);
+        }, this.config.timeout);
+      };
+
+      this.socket.onerror = (error: any) => {
+        this.cons("error", "socket_error");
+      };
+    } else if (!WebSocket) {
+      this.cons("warn", "browser_not_support");
+    } else {
+      this.cons("error", "configuration_invalid");
+    }
+  }
+
   private send(destination: string, key: string, value: any) {
     const m: Message = {
       destination: destination,
@@ -104,8 +105,7 @@ class WebZocket {
   private cons(type: string, message: string) {
     const log: Log = {
       type: type,
-      code: message,
-      message: message
+      code: message
     }
     this.config.log(log);
   }

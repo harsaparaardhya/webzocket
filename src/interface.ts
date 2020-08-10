@@ -17,8 +17,7 @@ interface Subscribe {
 
 interface Log {
   type: string,
-  code: string,
-  message: string
+  code: string
 }
 
 export { Config , Message , Subscribe , Log };
