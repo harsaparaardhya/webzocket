@@ -3,7 +3,7 @@ import { Config , Message , Subscribe , Log } from './interface';
 class WebZocket {
   private config: Config = {
     roomId: "",
-    timeout: 5000,
+    timeout: 3000,
     log: (log: Log) => {}
   };
   private socket: any = false;
@@ -44,45 +44,65 @@ class WebZocket {
     this.config = {...this.config,...config};
     const roomId = window.atob(this.config.roomId).split("::");
     if (roomId.length == 2 && WebSocket) {
-      this.socket = new WebSocket(roomId[0], roomId[1]);
-      this.socket.onopen = (e: any) => {
-        this.interval = setInterval(() => {
-          if (this.messages.length > 0 && this.socket.bufferedAmount == 0) {
-            const message = this.messages[0];
-            this.socket.send(JSON.stringify(message));
+      const request = new XMLHttpRequest();
 
-            this.messages.shift();
-          }
-        } , 100);
-      };
+      const url = new URL(roomId[0].replace("ws", "http") + "api/room/check");
+      url.searchParams.set("id", roomId[1]);
+      request.open("GET", url.toString());
+      request.setRequestHeader("App-Token", "SGFyc2EgUGFyYWFyZGh5YQ==");
 
-      this.socket.onmessage = (event: any) => {
-        const data = JSON.parse(event.data);
+      request.responseType = "json";
+      request.send();
 
-        if (data.error) {
-          const error = data.error;
-          this.cons(error.type, error.message);
+      request.onload = () => {
+        if (request.response.valid) {
+          this.socket = new WebSocket(roomId[0], roomId[1]);
+          this.socket.onopen = (e: any) => {
+            this.interval = setInterval(() => {
+              if (this.messages.length > 0 && this.socket.bufferedAmount == 0) {
+                const message = this.messages[0];
+                this.socket.send(JSON.stringify(message));
+
+                this.messages.shift();
+              }
+            } , 100);
+          };
+
+          this.socket.onmessage = (event: any) => {
+            const data = JSON.parse(event.data);
+
+            if (data.error) {
+              const error = data.error;
+              this.cons(error.type, error.message);
+            } else {
+              for (const a in this.subscribes) {
+                const subscribe = this.subscribes[a];
+                if (data.key == subscribe.key) subscribe.callback(data.value);
+              }
+            }
+          };
+
+          this.socket.onclose = () => {
+            this.socket = false;
+
+            if (this.interval)
+              clearInterval(this.interval);
+
+            setTimeout(() => {
+              this.init(this.config);
+            }, this.config.timeout);
+          };
+
+          this.socket.onerror = (error: any) => {
+            this.cons("error", "socket_error");
+          };
         } else {
-          for (const a in this.subscribes) {
-            const subscribe = this.subscribes[a];
-            if (data.key == subscribe.key) subscribe.callback(data.value);
-          }
+          this.cons("error", "origin_invalid");
         }
       };
 
-      this.socket.onclose = () => {
-        this.socket = false;
-
-        if (this.interval)
-          clearInterval(this.interval);
-
-        setTimeout(() => {
-          this.init(this.config);
-        }, this.config.timeout);
-      };
-
-      this.socket.onerror = (error: any) => {
-        this.cons("error", "socket_error");
+      request.onerror = () => {
+        this.cons("error", "server_error");
       };
     } else if (!WebSocket) {
       this.cons("warn", "browser_not_support");
@@ -97,9 +117,7 @@ class WebZocket {
       key: key,
       value: value
     };
-
-    if (this.socket)
-      this.messages.push(m);
+    this.messages.push(m);
   }
 
   private cons(type: string, message: string) {
