@@ -1,6 +1,7 @@
 interface Config {
     roomId: string;
     timeout: number;
+    protocol: string;
     log: (log: Log) => void;
 }
 

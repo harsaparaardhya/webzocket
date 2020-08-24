@@ -4,6 +4,7 @@ class WebZocket {
   private config: Config = {
     roomId: "",
     timeout: 3000,
+    protocol: "https",
     log: (log: Log) => {}
   };
   private socket: any = false;
@@ -40,13 +41,22 @@ class WebZocket {
     return this;
   }
 
+  public unsubscribe(key: string) {
+    const index = this.subscribes
+                        .map(subscribe => subscribe.key)
+                        .indexOf(key);
+    this.subscribes.splice(index, 1);
+
+    return this;
+  }
+
   private init(config: Config) {
     this.config = {...this.config,...config};
     const roomId = window.atob(this.config.roomId).split("::");
     if (roomId.length == 2 && WebSocket) {
       const request = new XMLHttpRequest();
 
-      const url = new URL(roomId[0].replace("ws", "http") + "api/room/check");
+      const url = new URL(roomId[0].replace("ws", this.config.protocol) + "api/room/check");
       url.searchParams.set("id", roomId[1]);
       request.open("GET", url.toString());
       request.setRequestHeader("App-Token", "SGFyc2EgUGFyYWFyZGh5YQ==");
